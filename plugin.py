@@ -81,26 +81,6 @@ class GalleryPlugin(WAN2GPPlugin):
                 background-color: var(--background-fill-primary);
                 border-radius: 8px;
                 min-width: min(400px, 100%) !important;
-                max-height: 80vh;
-                overflow-y: auto;
-                display: flex;
-                flex-direction: column;
-            }
-            #metadata-panel-container > .column {
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-                min-height: 0;
-            }
-            #metadata-panel-container video, #metadata-panel-container .preview-video {
-                flex: 1;
-                min-height: 150px;
-                max-height: 50vh;
-                object-fit: contain;
-            }
-            #main_video_preview, #metadata-panel-container .image-container {
-                flex: 1;
-                min-height: 0;
             }
 
             .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 16px; }
@@ -369,8 +349,8 @@ class GalleryPlugin(WAN2GPPlugin):
                         self.join_videos_btn = gr.Button("Join 2 Selected Videos", interactive=False, visible=False)
                         self.recreate_join_btn = gr.Button("Recreate Join From This Video", visible=False, interactive=False)
                         with gr.Column(visible=False) as self.preview_row:
-                            self.video_preview = gr.Video(label="Preview", interactive=True, height=250, visible=False, elem_id="main_video_preview")
-                            self.image_preview = gr.Image(label="Preview", interactive=False, height=250, visible=False)
+                            self.video_preview = gr.Video(label="Preview", interactive=True, visible=False, elem_id="main_video_preview")
+                            self.image_preview = gr.Image(label="Preview", interactive=False, visible=False)
                             with gr.Row(visible=False) as self.current_frame_buttons_row:
                                 self.use_as_start_btn = gr.Button("⬆️ as Start-Image", variant="primary", elem_id="custom-button")
                                 self.use_as_end_btn = gr.Button("as End-Image ⬆️", variant="primary", elem_id="custom-button")
