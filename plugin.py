@@ -2,6 +2,7 @@ import gradio as gr
 from shared.utils.plugins import WAN2GPPlugin
 import os
 import re
+import glob
 from PIL import Image
 import gc
 
@@ -50,6 +51,10 @@ class GalleryPlugin(WAN2GPPlugin):
         self.request_component("image_prompt_type_radio")
         self.request_component("image_prompt_type_endcheckbox")
         self.request_component("plugin_data")
+        self.request_component("image_refs")
+        self.request_component("image_refs_row")
+        self.request_component("image_guide")
+        self.request_component("video_prompt_type")
         self.register_data_hook("before_metadata_save", self.add_merge_info_to_metadata)
 
     def create_gallery_ui(self):
@@ -350,6 +355,7 @@ class GalleryPlugin(WAN2GPPlugin):
                                 self.use_as_start_btn = gr.Button("⬆️ as Start-Image", variant="primary", elem_id="custom-button")
                                 self.use_as_end_btn = gr.Button("as End-Image ⬆️", variant="primary", elem_id="custom-button")
                             self.send_to_generator_settings_btn = gr.Button("Use Settings in Generator", interactive=False, visible=False)
+                            self.load_source_images_btn = gr.Button("Load Source Images", interactive=False, visible=False)
                             with gr.Row(visible=False) as self.frame_preview_row:
                                 self.first_frame_preview = gr.Image(label="First Frame", interactive=False, height=150)
                                 self.last_frame_preview = gr.Image(label="Last Frame", interactive=False, height=150)
@@ -392,6 +398,7 @@ class GalleryPlugin(WAN2GPPlugin):
             self.metadata_panel_output,
             self.join_videos_btn,
             self.send_to_generator_settings_btn,
+            self.load_source_images_btn,
             self.preview_row,
             self.video_preview,
             self.image_preview,
@@ -442,9 +449,9 @@ class GalleryPlugin(WAN2GPPlugin):
             fn=self.update_metadata_panel_and_buttons,
             inputs=[self.selected_files_for_backend, self.state],
             outputs=[
-                self.join_videos_btn, self.send_to_generator_settings_btn, self.metadata_panel_output,
-                self.path_for_settings_loader, self.preview_row, self.video_preview, self.image_preview,
-                self.frame_preview_row, self.first_frame_preview, self.last_frame_preview,
+                self.join_videos_btn, self.send_to_generator_settings_btn, self.load_source_images_btn,
+                self.metadata_panel_output, self.path_for_settings_loader, self.preview_row, self.video_preview,
+                self.image_preview, self.frame_preview_row, self.first_frame_preview, self.last_frame_preview,
                 self.join_interface, self.recreate_join_btn, self.merge_info_display,
                 self.merge_source1_prompt, self.merge_source1_image, self.merge_source2_prompt, self.merge_source2_image,
                 self.current_frame_buttons_row, self.current_selected_video_path
@@ -505,6 +512,15 @@ class GalleryPlugin(WAN2GPPlugin):
             show_progress="hidden"
         )
 
+        self.load_source_images_btn.click(
+            fn=self.load_source_images_from_gallery,
+            inputs=[self.state, self.path_for_settings_loader],
+            outputs=[self.image_start, self.image_end, self.image_refs, self.image_guide,
+                     self.image_start_row, self.image_end_row, self.image_refs_row,
+                     self.image_prompt_type, self.video_prompt_type, self.main_tabs],
+            show_progress="hidden"
+        )
+
         self.send_to_generator_btn.click(
             fn=self.send_selected_frames_to_generator,
             inputs=[self.video1_path, self.video1_frame_slider, self.video2_path, self.video2_frame_slider, self.image_prompt_type],
@@ -517,9 +533,9 @@ class GalleryPlugin(WAN2GPPlugin):
             fn=self.update_metadata_panel_and_buttons,
             inputs=[self.selected_files_for_backend, self.state],
             outputs=[
-                self.join_videos_btn, self.send_to_generator_settings_btn, self.metadata_panel_output,
-                self.path_for_settings_loader, self.preview_row, self.video_preview, self.image_preview,
-                self.frame_preview_row, self.first_frame_preview, self.last_frame_preview,
+                self.join_videos_btn, self.send_to_generator_settings_btn, self.load_source_images_btn,
+                self.metadata_panel_output, self.path_for_settings_loader, self.preview_row, self.video_preview,
+                self.image_preview, self.frame_preview_row, self.first_frame_preview, self.last_frame_preview,
                 self.join_interface, self.recreate_join_btn, self.merge_info_display,
                 self.merge_source1_prompt, self.merge_source1_image, self.merge_source2_prompt, self.merge_source2_image,
                 self.current_frame_buttons_row, self.current_selected_video_path
@@ -759,6 +775,7 @@ class GalleryPlugin(WAN2GPPlugin):
             self.join_videos_btn: gr.Button(visible=False),
             self.recreate_join_btn: gr.Button(visible=False),
             self.send_to_generator_settings_btn: gr.Button(visible=False),
+            self.load_source_images_btn: gr.Button(visible=False),
             self.preview_row: gr.Column(visible=False),
             self.video_preview: gr.Video(value=None),
             self.image_preview: gr.Image(value=None),
@@ -842,6 +859,7 @@ class GalleryPlugin(WAN2GPPlugin):
             self.join_videos_btn: gr.Button(visible=len(video_files) == 2 and len(file_paths) == 2, interactive=True),
             self.recreate_join_btn: gr.Button(visible=False),
             self.send_to_generator_settings_btn: gr.Button(visible=False),
+            self.load_source_images_btn: gr.Button(visible=False),
             self.path_for_settings_loader: "",
             self.preview_row: gr.Column(visible=False),
             self.video_preview: gr.Video(visible=False, value=None),
@@ -865,6 +883,9 @@ class GalleryPlugin(WAN2GPPlugin):
             updates[self.path_for_settings_loader] = file_path
             configs, _, _ = self.get_settings_from_file(current_state, file_path, False, False, False)
             updates[self.send_to_generator_settings_btn] = gr.Button(visible=True, interactive=bool(configs))
+            # Show Load Source Images button if source_images exists in metadata
+            has_source_images = bool(configs and configs.get("source_images"))
+            updates[self.load_source_images_btn] = gr.Button(visible=has_source_images, interactive=has_source_images)
             updates[self.metadata_panel_output] = gr.HTML(value=self.get_video_info_html(current_state, file_path), visible=True)
 
             if configs and "merge_info" in configs:
@@ -947,6 +968,188 @@ class GalleryPlugin(WAN2GPPlugin):
         gr.Info(f"Settings from '{os.path.basename(file_path)}' sent to generator.")
         mf, mbc, mc = (gr.update(), gr.update(), gr.update()) if target_model_type == current_model_type else self.generate_dropdown_model_list(target_model_type)
         return mf, mc, gr.update(selected="video_gen"), self.get_unique_id()
+
+    def load_source_images_from_gallery(self, current_state, file_path):
+        """Load source images from metadata and populate the generator's image inputs."""
+        if not file_path:
+            gr.Warning("No file selected.")
+            return tuple(gr.update() for _ in range(10))
+        
+        configs, _, _ = self.get_settings_from_file(current_state, file_path, False, False, False)
+        if not configs:
+            gr.Warning("No metadata found for this file.")
+            return tuple(gr.update() for _ in range(10))
+        
+        source_images = configs.get("source_images", {})
+        if not source_images:
+            gr.Warning("No source images found in metadata.")
+            return tuple(gr.update() for _ in range(10))
+        
+        # Get search directories from server_config
+        search_dirs = []
+        save_path = self.server_config.get("save_path", "outputs")
+        image_save_path = self.server_config.get("image_save_path", "outputs")
+        for p in [save_path, image_save_path]:
+            if p and os.path.isdir(p) and p not in search_dirs:
+                search_dirs.append(p)
+        
+        # Initialize updates
+        updates = {
+            self.image_start: gr.update(),
+            self.image_end: gr.update(),
+            self.image_refs: gr.update(),
+            self.image_guide: gr.update(),
+            self.image_start_row: gr.update(),
+            self.image_end_row: gr.update(),
+            self.image_refs_row: gr.update(),
+            self.image_prompt_type: gr.update(),
+            self.video_prompt_type: gr.update(),
+            self.main_tabs: gr.Tabs(selected="video_gen"),
+        }
+        
+        loaded_count = 0
+        image_prompt_updates = ""
+        video_prompt_updates = ""
+        
+        # Helper function to resolve source_info to a file path (not PIL Image)
+        # Returning the path preserves the original filename when Gradio copies to temp
+        def resolve_to_path(source_info):
+            """Resolve source_info to a file path string."""
+            if not source_info:
+                return None
+            
+            # Handle dict format from source_images plugin
+            if isinstance(source_info, dict):
+                # Try original_path first, then temp_path
+                path = source_info.get('original_path') or source_info.get('temp_path')
+                if not path:
+                    # Search by filename
+                    filename = source_info.get('filename')
+                    if filename:
+                        path = self._find_file_by_name(filename, search_dirs)
+            else:
+                # Handle string path
+                path = source_info
+                if not os.path.isfile(path):
+                    path = self._find_file_by_name(os.path.basename(path), search_dirs)
+            
+            if path and os.path.isfile(path):
+                return path
+            return None
+        
+        # Process image_start
+        if "image_start" in source_images:
+            img_info = source_images["image_start"]
+            if isinstance(img_info, list):
+                paths = [resolve_to_path(item) for item in img_info]
+                paths = [p for p in paths if p is not None]
+            else:
+                path = resolve_to_path(img_info)
+                paths = [path] if path else []
+            
+            if paths:
+                # Pass file paths directly - preserves original filename in Gradio temp
+                updates[self.image_start] = [(p, f"Source {i+1}") for i, p in enumerate(paths)]
+                updates[self.image_start_row] = gr.Row(visible=True)
+                image_prompt_updates += "S"
+                loaded_count += len(paths)
+        
+        # Process image_end
+        if "image_end" in source_images:
+            img_info = source_images["image_end"]
+            if isinstance(img_info, list):
+                paths = [resolve_to_path(item) for item in img_info]
+                paths = [p for p in paths if p is not None]
+            else:
+                path = resolve_to_path(img_info)
+                paths = [path] if path else []
+            
+            if paths:
+                updates[self.image_end] = [(p, f"Source {i+1}") for i, p in enumerate(paths)]
+                updates[self.image_end_row] = gr.Row(visible=True)
+                image_prompt_updates += "E"
+                loaded_count += len(paths)
+        
+        # Process image_refs
+        if "image_refs" in source_images:
+            img_info = source_images["image_refs"]
+            if isinstance(img_info, list):
+                paths = [resolve_to_path(item) for item in img_info]
+                paths = [p for p in paths if p is not None]
+            else:
+                path = resolve_to_path(img_info)
+                paths = [path] if path else []
+            
+            if paths:
+                updates[self.image_refs] = [(p, f"Ref {i+1}") for i, p in enumerate(paths)]
+                updates[self.image_refs_row] = gr.Row(visible=True)
+                video_prompt_updates += "I"
+                loaded_count += len(paths)
+        
+        # Process image_guide (single image, not gallery)
+        if "image_guide" in source_images:
+            img_info = source_images["image_guide"]
+            path = resolve_to_path(img_info) if not isinstance(img_info, list) else resolve_to_path(img_info[0])
+            if path:
+                # For single Image component, pass the path directly
+                updates[self.image_guide] = path
+                video_prompt_updates += "G"
+                loaded_count += 1
+        
+        # Update prompt types if needed
+        if image_prompt_updates:
+            current_ipt = configs.get("image_prompt_type", "")
+            for letter in image_prompt_updates:
+                if letter not in current_ipt:
+                    current_ipt = self.add_to_sequence(current_ipt, letter)
+            updates[self.image_prompt_type] = current_ipt
+        
+        if video_prompt_updates:
+            current_vpt = configs.get("video_prompt_type", "")
+            for letter in video_prompt_updates:
+                if letter not in current_vpt:
+                    current_vpt = self.add_to_sequence(current_vpt, letter)
+            updates[self.video_prompt_type] = current_vpt
+        
+        if loaded_count > 0:
+            gr.Info(f"Loaded {loaded_count} source image(s) from metadata.")
+        else:
+            gr.Warning("Could not load any source images - files may have been moved or deleted.")
+        
+        return (
+            updates[self.image_start],
+            updates[self.image_end],
+            updates[self.image_refs],
+            updates[self.image_guide],
+            updates[self.image_start_row],
+            updates[self.image_end_row],
+            updates[self.image_refs_row],
+            updates[self.image_prompt_type],
+            updates[self.video_prompt_type],
+            updates[self.main_tabs],
+        )
+
+    def _find_file_by_name(self, filename, search_dirs):
+        """Search for a file by name in the given directories."""
+        if not filename:
+            return None
+        
+        for search_dir in search_dirs:
+            if not os.path.isdir(search_dir):
+                continue
+            
+            # Direct match
+            direct_path = os.path.join(search_dir, filename)
+            if os.path.isfile(direct_path):
+                return direct_path
+            
+            # Recursive search
+            pattern = os.path.join(search_dir, '**', filename)
+            matches = glob.glob(pattern, recursive=True)
+            if matches:
+                return max(matches, key=os.path.getmtime)
+        
+        return None
 
     def show_join_interface(self, selection_str, current_state):
         video_files = [f for f in selection_str.split('||') if self.has_video_file_extension(f)] if selection_str else []
