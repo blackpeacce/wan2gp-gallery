@@ -349,7 +349,7 @@ class GalleryPlugin(WAN2GPPlugin):
                             with gr.Row(visible=False) as self.current_frame_buttons_row:
                                 self.use_as_start_btn = gr.Button("⬆️ as Start-Image", variant="primary", elem_id="custom-button")
                                 self.use_as_end_btn = gr.Button("as End-Image ⬆️", variant="primary", elem_id="custom-button")
-                                self.send_to_generator_settings_btn = gr.Button("Use Settings in Generator", interactive=False, visible=False)
+                            self.send_to_generator_settings_btn = gr.Button("Use Settings in Generator", interactive=False, visible=False)
                             with gr.Row(visible=False) as self.frame_preview_row:
                                 self.first_frame_preview = gr.Image(label="First Frame", interactive=False, height=150)
                                 self.last_frame_preview = gr.Image(label="Last Frame", interactive=False, height=150)
