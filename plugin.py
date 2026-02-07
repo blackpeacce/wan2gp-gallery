@@ -80,7 +80,27 @@ class GalleryPlugin(WAN2GPPlugin):
                 padding: 10px;
                 background-color: var(--background-fill-primary);
                 border-radius: 8px;
-                min-width: min(400px, 100%);
+                min-width: min(400px, 100%) !important;
+                max-height: 80vh;
+                overflow-y: auto;
+                display: flex;
+                flex-direction: column;
+            }
+            #metadata-panel-container > .column {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                min-height: 0;
+            }
+            #metadata-panel-container video, #metadata-panel-container .preview-video {
+                flex: 1;
+                min-height: 150px;
+                max-height: 50vh;
+                object-fit: contain;
+            }
+            #main_video_preview, #metadata-panel-container .image-container {
+                flex: 1;
+                min-height: 0;
             }
 
             .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 16px; }
