@@ -77,9 +77,10 @@ class GalleryPlugin(WAN2GPPlugin):
             #metadata-panel-container {
                 flex: 1;
                 border: 1px solid var(--border-color-primary);
-                padding: 15px;
+                padding: 10px;
                 background-color: var(--background-fill-primary);
                 border-radius: 8px;
+                min-width: min(400px, 100%);
             }
 
             .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 16px; }
@@ -128,7 +129,7 @@ class GalleryPlugin(WAN2GPPlugin):
                 border-top: 1px solid var(--border-color-primary);
                 min-height: 3.2em;
                 display: flex;
-                align-items: center;
+                /* align-items: center; */
                 justify-content: center;
             }
             .metadata-content {
@@ -148,7 +149,6 @@ class GalleryPlugin(WAN2GPPlugin):
             .metadata-content .placeholder {
                 color: var(--body-text-color-subdued);
                 text-align: center;
-                margin-top: 20px;
                 font-style: italic;
             }
             #video_info, #video_info TR, #video_info TD {
@@ -342,7 +342,7 @@ class GalleryPlugin(WAN2GPPlugin):
                     self.delete_files_btn = gr.Button("Delete selected File", elem_id="stop-button")
                 with gr.Row(elem_id="gallery-layout"):
                     self.gallery_html_output = gr.HTML(
-                        value="<div class='gallery-grid'><p class='placeholder'>Click 'Refresh Files' to load gallery.</p></div>",
+                        value="<div class='gallery-grid'><p class='placeholder' style='width: max-content;'>Click 'Refresh Files' to load gallery.</p></div>",
                         elem_id="gallery-container"
                     )
                     with gr.Column(elem_id="metadata-panel-container"):
@@ -836,7 +836,7 @@ class GalleryPlugin(WAN2GPPlugin):
             values.extend(misc_values)
             labels.extend(misc_labels)
             values.append(configs.get("prompt", "")[:1024])
-            labels.append("Text Prompt")
+            labels.append("Prompt")
             values.extend([
                 f"{configs.get('resolution', '')} (real: {width}x{height})",
                 configs.get('video_length', 0),
@@ -844,7 +844,7 @@ class GalleryPlugin(WAN2GPPlugin):
                 configs.get('guidance_scale', 'N/A'),
                 configs.get('num_inference_steps', 'N/A')
             ])
-            labels.extend(["Resolution", "Video Length", "Seed", "Guidance (CFG)", "Num Inference steps"])
+            labels.extend(["Resolution", "Length", "Seed", "CFG", "Steps"])
         rows = [
             f"<TR><TD style='text-align: right; vertical-align: top; width:1%; white-space:nowrap;'>{l}</TD><TD><B>{v}</B></TD></TR>"
             for l, v in zip(labels, values) if v is not None
